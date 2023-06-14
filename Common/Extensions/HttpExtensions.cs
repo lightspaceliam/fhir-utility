@@ -62,10 +62,8 @@ namespace Common.Extensions
             }
         }
 
-        public static async Task<string> PutRequestAsync(HttpClient httpClient, string uri, StringContent stringContent, AuthenticationHeaderValue authenticationHeaderValue)
+        public static async Task<string> PutRequestAsync(HttpClient httpClient, string uri, StringContent stringContent)
         {
-            httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
-
             using (var httpResponseMessage = await httpClient.PutAsync(uri, stringContent))
             {
                 var content = await httpResponseMessage.Content.ReadAsStringAsync();
