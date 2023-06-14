@@ -1,6 +1,7 @@
 ﻿using Common;
 using Common.Extensions;
 using Hl7.Fhir.Model;
+using Hl7.Fhir.Utility;
 using Microsoft.Extensions.Configuration;
 
 //  Register access to User Secrets.
@@ -32,48 +33,77 @@ var runBulkDataOp = true;
 
 if(runBulkDataOp == true)
 {
+    //  Use case: update a collection of DetectedIssue/s. Update Status & Extension with updated-by
     const string PATIENT_ID = "9e1ab93f-ce36-4028-88bb-aff23a433d55";
     const string SITE_ID = "fadf8070-2b16-412e-b1d6-fad64e4d7afe";
     var preliminaryStatus = ObservationStatus.Preliminary.ToString().ToLower();
     var registeredStatus = ObservationStatus.Registered.ToString().ToLower();
 
+    //  Get the DetectedIssue/s data by Patient.Id
     var detetedIssueQuery = $"{typeof(DetectedIssue).Name}?patient={typeof(Patient).Name}/{PATIENT_ID}&status={preliminaryStatus}";
-    var content = await httpClient.GetRequestAsync(detetedIssueQuery);
+    var content = await HttpExtensions.GetRequestAsync(httpClient, detetedIssueQuery);
+
     if (string.IsNullOrEmpty(content))
     {
         Console.WriteLine("Bulk update DetectedIssue date not found.");
         return;
     }
+
     var detectedIssues = content
         .ToBundle()
         .ToFhirResourceWherePosible<DetectedIssue>();
+
     var bundle = new Bundle
     {
         Type = Bundle.BundleType.Transaction,
     };
     var entries = new List<Bundle.EntryComponent>();
 
+    //  Update each record and add it back to the bundle for bulk update.
     foreach(var detectedIssue in detectedIssues)
     {
         Console.WriteLine($"Id: {detectedIssue.Id}");
-        var fullUrl = $"{httpClient.BaseAddress}/{typeof(DetectedIssue).Name}/{detectedIssue.Id}";
-        
-        //  You could do this however you can't add request.
-        //bundle.AddResourceEntry(detectedIssue, fullUrl);
+        var absoluteUrl = $"{httpClient.BaseAddress}{typeof(DetectedIssue).Name}/{detectedIssue.Id}";
+        var absoluteResourceId = $"{typeof(DetectedIssue).Name}/{detectedIssue.Id}";
+        var uuid = $"urn:uuid:{detectedIssue.Id}";
 
-        var entry = new Bundle.EntryComponent
-        {
-            FullUrl = fullUrl,
-            Request = new Bundle.RequestComponent
-            {
-                Method = Bundle.HTTPVerb.PUT,
-                Url = $"{typeof(DetectedIssue).Name}/{detectedIssue.Id}"
-            },
-            Resource = detectedIssue
-        };
-        entries.Add(entry);
+        //  You could do this however you can't add request.
+        
+        detectedIssue.Status = ObservationStatus.Registered;
+        detectedIssue.Extension.ToUpdatedAuditResourceExtensions("FhirUtility-Hando");
+        bundle.AddResourceEntry(detectedIssue, uuid);
+
+        //  Why is this not working (persisting the bundle)? What is wrong witn my composition of the Bundle? 
+        //var entry = new Bundle.EntryComponent
+        //{
+        //    FullUrl = absoluteUrl,
+        //    Request = new Bundle.RequestComponent
+        //    {
+        //        Method = Bundle.HTTPVerb.PUT,
+        //        Url = absoluteResourceId
+        //    },
+        //    Resource = detectedIssue
+        //};
+        //entries.Add(entry);
+    }
+    //  Add the entries back to the bundle.
+    bundle.Entry = entries;
+
+    //  When persisting with a bundle of type "Transaction" the Url must be {baseUrl}/ There is no reference to a specific Fhir Resource.
+    //  POST off to the Fhir Service
+    content = await HttpExtensions.PutRequestAsync(httpClient, "", bundle.ToPayload());
+    var entryResponses = content.HandleBundlePersistanceResourceAsync();
+
+    if (entryResponses.IsNullOrEmpty())
+    {
+        Console.WriteLine($"{nameof(entryResponses)} is empty.");
+        return;
     }
 
+    foreach(var entry in entryResponses)
+    {
+        Console.WriteLine($"Status: {entry.Status}, Location: {entry.Location}");
+    }
     //  add to HttpClient to persist
 }
 

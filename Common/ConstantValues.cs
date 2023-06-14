@@ -22,5 +22,9 @@
         public readonly static string FHIR_RESOURCE_RELATED_PEOPLE_AREA = $"{FHIR_RESOURCE_BASE}related-people";
         public readonly static string FHIR_RESOURCE_TRIAGE_DASHBOARD_AREA = $"{FHIR_RESOURCE_BASE}triage-dashboard";
         public readonly static string FHIR_RESOURCE_FLAG_AREA = $"{FHIR_RESOURCE_BASE}flag";
+
+        private const string URL_TELSTRA_HEALTH = "http://health.telstra.com/";
+
+        public static readonly string UrlUpdatedByDefinition = $"{URL_TELSTRA_HEALTH}StructureDefinition/updated-by";
     }
 }
