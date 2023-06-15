@@ -1,11 +1,9 @@
-﻿using System;
-using System.Net;
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
 
 namespace Common.Extensions
 {
-	public static class HttpExtensions
+    public static class HttpExtensions
 	{
         public static HttpClient CreateHttpClient(string baseUrl, string username, string password)
         {

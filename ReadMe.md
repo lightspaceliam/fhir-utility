@@ -23,6 +23,7 @@ You will need to manage the following User Seecrets:
         "Username": "",
         "Password": ""
     },
+    "PATIENT_ID": "",
     "SearchParameters_Data_Path": ""
 }
 ```
