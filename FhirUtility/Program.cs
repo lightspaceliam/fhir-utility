@@ -1,8 +1,6 @@
-﻿using Common;
-using Common.Extensions;
+﻿using Common.Extensions;
 using FhirUtility.Services;
 using Hl7.Fhir.Model;
-using Hl7.Fhir.Rest;
 using Hl7.Fhir.Utility;
 using Microsoft.Extensions.Configuration;
 using System.Diagnostics;
@@ -32,9 +30,9 @@ if (string.IsNullOrEmpty(baseUrl)
 }
 
 var httpClient = HttpExtensions.CreateHttpClient(baseUrl, username, password);
-var runSearchParams = false;
+var runSearchParams = true;
 var runBulkDataOp = false;
-var runBundleQuery = true;
+var runBundleQuery = false;
 
 #region Batch Bundle query strategy.
 
@@ -93,40 +91,19 @@ if (runBulkDataOp == true)
 }
 
 #endregion
+
 #region SearchParameter.
 
 if (runSearchParams == true)
 {
-    //  Read the JSON file for all required custom Search Parameters to a bundle. 
-    var bundle = await path.ReadDataFileAsync();
+    var searchParameterService = new SearchParameterService();
 
-    //  Cast to a List of type SearchParameter.
-    var searchParameters = bundle.ToFhirResourceWherePosible<SearchParameter>();
 
-    //  Comma delimited string of Id for the Fhir Service query. This is MVP. There may come a time when there are too many and a batching strategy will be required.
-    var ids = string.Join(',', searchParameters
-        .Select(p => p.Id)
-        .ToList());
+    var missingSearchParameters = await searchParameterService.DoWork(httpClient, path);
 
-    
-
-    //  Execute the request.
-    var content = await httpClient.GetRequestAsync($"{typeof(SearchParameter).Name}?_id={ids}");
-
-    //  Cast the response back to a List of type SearchParameter.
-    var response = content
-        .ToBundle()
-        .ToFhirResourceWherePosible<SearchParameter>();
-
-    //  Calculate missing SearchParameter/s.
-    var missingSearchParameters = response
-        .Where(p => ids.Contains(p.Id))
-        .ToList();
 
     //  Write results.
-    Console.WriteLine($"Environment: {baseUrl}\n" +
-        $"Custom {typeof(SearchParameter).Name}'s: {searchParameters.Count}\n" +
-        $"Missing {typeof(SearchParameter).Name}'s: {missingSearchParameters.Count}\n\n");
+    Console.WriteLine($"Environment: {baseUrl}\nMissing {typeof(SearchParameter).Name}'s: {missingSearchParameters.Count}\n\n");
 
     //  Write individual missing SearchParameter/s.
     var i = 1;
